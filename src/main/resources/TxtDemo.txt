@@ -1,0 +1,2 @@
+className = Java2Reflect.Reflect_realtest.Student2
+methodName = show2
