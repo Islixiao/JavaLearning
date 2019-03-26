@@ -1,0 +1,78 @@
+众所周知，开启线程2种方法：第一是实现Runable接口，第二继承Thread类。（当然内部类也算...）常用的，这里就不再赘述。
+
+本章主要分析：
+
+1.常用线程池
+
+2.常用调度类。
+
+===========================
+
+一、线程池
+1.newCachedThreadPool
+       (1)缓存型池子，先查看池中有没有以前建立的线程，如果有，就reuse，如果没有，就建立一个新的线程加入池中；
+
+        (2)缓存型池子，通常用于执行一些生存周期很短的异步型任务；因此一些面向连接的daemon型server中用得不多；
+
+        (3)能reuse的线程，必须是timeout IDLE内的池中线程，缺省timeout是60s,超过这个IDLE时长，线程实例将被终止及移出池。
+
+        (4)注意，放入CachedThreadPool的线程不必担心其结束，超过TIMEOUT不活动，其会自动被终止
+
+2.newFixedThreadPool--本人常用
+        (1)newFixedThreadPool与cacheThreadPool差不多，也是能reuse就用，但不能随时建新的线程
+
+        (2)其独特之处:任意时间点，最多只能有固定数目的活动线程存在，此时如果有新的线程要建立，只能放在另外的队列中等待，直到当前的线程中某个线程终止直接被移出池子
+
+        (3)和cacheThreadPool不同，FixedThreadPool没有IDLE机制（可能也有，但既然文档没提，肯定非常长，类似依赖上层的TCP或UDP IDLE机制之类的），所以FixedThreadPool多数针对一些很稳定很固定的正规并发线程，多用于服务器
+
+        (4)从方法的源代码看，cache池和fixed 池调用的是同一个底层池，只不过参数不同:
+  　　　　fixed池线程数固定，并且是0秒IDLE（无IDLE）
+  　　　　cache池线程数支持0-Integer.MAX_VALUE(显然完全没考虑主机的资源承受能力），60秒IDLE
+
+3.ScheduledThreadPool
+        （1）调度型线程池
+
+        （2）这个池子里的线程可以按schedule依次delay执行，或周期执行
+
+4.SingleThreadExecutor
+        （1）单例线程，任意时间池中只能有一个线程
+
+        （2）用的是和cache池和fixed池相同的底层池，但线程数目是1-1,0秒IDLE（无IDLE）
+
+
+
+
+
+一.wait、notify、notifyAll-----不建议新手直接使用
+顾名思义，wait是等待，notify是通知一个等待线程、notifyAll唤醒所有等待线程。
+
+二.CountDownLatch----很适合用来将一个任务分为n个独立的部分，等这些部分都完成后继续接下来的任务
+
+隶属于java.util.concurrent包。CountDownLatch类是一个同步计数器,构造时传入int参数,
+该参数就是计数器的初始值，每调用一次countDown()方法，计数器减1,计数器大于0 时，await()方法会阻塞程序继续执行.
+当多个线程达到预期时（latch.countDown()），唤醒多个其他等待中的线程，即执行latch.await()后面的代码。
+样例是，张三、李四合作完成任务，张三5秒，李四8秒，当张三李四都完成后，总任务结束。
+
+
+三.CyclicBarrier----适合多线程循环到达屏障后再执行
+
+ 字面意思循环屏障，可理解为栅栏，协同多个线程都执行到barrier.await时，如果构造CyclicBarrier barrier=new CyclicBarrier(2, Runnable)时，第一个参数代码线程数，如果有第二参Runnable,那么所有线程都await时，先执行Runnable，再各自执行await后续的代码。
+
+CyclicBarrier和CountDownLatch区别：
+
+1.CountDownLatch在多个线程都执行完毕latch.countDown后唤醒await线程，多个countDown子线程在执行完countDown后可继续执行后续代码。
+
+2.CyclicBarrier可循环使用，CountDownLatch只1次。见代码示例：
+
+3.CountDownLatch需要latch.countDown和latch.await()配合使用。CyclicBarrier就一个barrier.await。
+
+下面举例：鸟、鱼2个线程同时运行问题。
+四.Semaphore---通过控制操作系统的信号量数目来控制并发，比控制线程并发数粒度更细。
+
+管理固定数值的信号量，用以控制并发的数量。把需要并发的代码放在acquire、release之间即可。acquire获取信号，release释放信号。如果Semaphore管理一个信号量，就是互斥锁。
+
+五.Exchanger
+用于两个线程之间进行数据交换，先执行exchanger.exchange()的线程等待后来的线程到达，然后交换数据，最后再继续向下执行
+
+六.Future和FutrueTask---常用！
+  Future是接口，FutrueTask是接口实现类。场景：多线程并发执行，返回结果放进list.
